@@ -1,21 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Project>
-	<VersionInfo>
-		<VersionNumbers Major="1" Minor="0" Release="0" Build="0"/>
-		<LanguageID Value="1046"/>
-		<CharsetID Value="1252"/>
-		<CompanyName Value=""/>
-		<FileVersion Value="1.0.0.0"/>
-		<FileDescription Value="Glut demo"/>
-		<InternalName Value=""/>
-		<LegalCopyright Value=""/>
-		<LegalTrademarks Value=""/>
-		<OriginalFilename Value=""/>
-		<ProductName Value=""/>
-		<ProductVersion Value="1.0.0.0"/>
-		<AutoIncrementBuild Value="No"/>
-	</VersionInfo>
-	<Libs Value="-mwindows -static -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32"/>
+	<Libs Value="-static -lglut32 -lglu32 -lopengl32 -lwinmm -lgdi32"/>
 	<Flags Value="-DGLUT_STATIC"/>
 	<Target Value="Pac-Man 3D.exe"/>
 	<CommandLine Value=""/>
@@ -27,7 +12,7 @@
 	<EnableTheme Value="Yes"/>
 	<RequiresAdmin Value="No"/>
 	<CompilerType Value="CPP"/>
-	<AppType Value="GUI"/>
+	<AppType Value="CONSOLE"/>
 	<Files>
 		<File Name="main.cpp"/>
 	</Files>

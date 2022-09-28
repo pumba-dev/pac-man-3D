@@ -9,12 +9,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+#include <sstream>
 using namespace std;
+#include <conio.h>
+#include <fstream>
+
 
 // VARIABLES
 // -- Window
-static int WindowSizeX = 720;
-static int WindowSizeY = 720;
+#define WindowSizeX 720
+#define WindowSizeY 720
 
 // -- Map
 #define FLOOR 0
@@ -28,159 +32,215 @@ static int WindowSizeY = 720;
 #define PURPLEGHOST 8
 #define PACMAN 9
 
-#define MapSizeX 20
-#define MapSizeY 20
+#define MAPSIZE 20
+#define TAM 0.1f
+#define MAT2X(j) ((j)*0.1f-1)
+#define MAT2Y(i) (0.9-(i)*0.1f)
 
+// -- GamePlay
 typedef struct {
-	int gameMap[MapSizeY][MapSizeX];
+	int gameMap[MAPSIZE][MAPSIZE];
 	int foodCount;
-	int 
-	
-}
+	string gameMapName;
+} pacmanGame;
+
+pacmanGame gameEngine;
 
 
 // Program Functions
-int main(int argc, char *argv[]);
-static void reshape(int width, int height);
-static void display(void);
-static void drawObject(float column, float row, int object);
-static void desenhaMapa(int gameMap[MapSizeY][MapSizeX]);
-static void key(unsigned char key, int x, int y);
+int main(int argc, char * argv[]);
+void clockFunction(int clock);
+void reshape(int width, int height);
+void display(void);
+void drawObject(float column, float row, int object);
+void desenhaMapa();
+void key(unsigned char key, int x, int y);
+void readArchiveMap(string mapName);
+void showGameMap();
 
-int main(int argc, char *argv[])
-{
-    glutInit(&argc, argv); // Init Glut
-    glutInitWindowSize(WindowSizeX, WindowSizeY); // Define Window Size
-    glutInitWindowPosition(10,10); // Window Started Position
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode 
-    glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
+// Main
+int main(int argc, char * argv[]) {
+	glutInit( & argc, argv); // Init Glut
+	glutInitWindowSize(WindowSizeX, WindowSizeY); // Define Window Size
+	glutInitWindowPosition(10, 10); // Window Started Position
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE); // Display Mode
+	glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
+	glClearColor(0, 0, 0, 1); // Window Background Color
 
-	readArchiveMap();
+	gameEngine.gameMapName = "pacman-map-01.txt";
+	readArchiveMap(gameEngine.gameMapName);
+	showGameMap();
 	
-    glutReshapeFunc(reshape);
-    glutDisplayFunc(display);
-    glutKeyboardFunc(key);
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(key);
+	glutTimerFunc(100, clockFunction, 1);
 
-    glClearColor(0,0,0,1);
+	glutMainLoop();
 
-    glutMainLoop();
-
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
 
-static void readArchiveMap() {
-	
+void clockFunction(int clock) {
+	// printf("## Clock %d ##\n", clock);
+
+	glutTimerFunc(100, clockFunction, clock + 1);
 }
 
+void readArchiveMap(string mapName) {
+	char charMapName[mapName.length() + 1]; // Create Array of Char For Map Name
+	strcpy(charMapName, mapName.c_str()); // Copy String into Array of Char
 
-/* GLUT callback Handlers */
+	ifstream archiveMap; // Create Archive Stream Object
+	archiveMap.open(charMapName); // Open Archive
+	string archiveCurrentLine; // Variable To Save Current Line
 
-static void reshape(int w, int h)
-{    
-    glMatrixMode (GL_PROJECTION);
+	if(archiveMap.is_open()) {
+		cout << "Arquivo de Mapa Aberto com Sucesso!\n" << endl;
+
+		int row = 0;
+		int column = 0;
+		while(!archiveMap.eof()) {
+			getline(archiveMap, archiveCurrentLine);
+			// cout << archiveCurrentLine << endl;
+
+			for(int i = 0; i < (int)archiveCurrentLine.length(); i++) { // add line to gamemap row;
+				char str = archiveCurrentLine[i]; // convert to char
+				int objectNumber = str - '0'; // convert chart ascii to integer
+
+				if((int)str != 9) { // verify if is a empty value
+					gameEngine.gameMap[row][column] = objectNumber;
+					//cout << "index:: " << row << "|" <<  column << " || objectNumber:: " << objectNumber << " || gameMap:: " << gameEngine.gameMap[row][column] << endl;
+					column += 1;
+				}
+			}
+			
+			// Protect Matriz Size
+			if(row >= MAPSIZE -1 && column >= MAPSIZE -1) {
+				cout << "CABO PORRA" << endl;
+				break;
+			} else {
+				row += 1;
+				column = 0;	
+			}		
+		}
+		archiveMap.close();
+		cout << "Arquivo de Salvo com Sucesso!\n" << endl;
+	} else {
+		cout << "Problemas na Abertura do Arquivo de Mapa!\n" << endl;
+	}
+}
+
+void reshape(int w, int h) {
+	// Evita a divisao por zero
+	if(h == 0) h = 1;
+
+	glViewport (0, 0, w, h); // Viewport Dimensions
+
+	// Init Coord System
+	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	glViewport (0, 0, w, h);
+
+	gluPerspective(60, (float)w / (float)h, 1.0, 20.0);
+	gluLookAt(0.0, -1.0, 2.5, 	// posição da câmera (olho)
+			  0.0, 0.0, 0.0, 	// centro da cena
+			  0.0, 1.0, 0.0); // direção de cima
 
 	glMatrixMode (GL_MODELVIEW);
 }
 
-static void display(void)
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clean Collor Buffer
+void display(void) {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clean Collor Buffer
 	glLoadIdentity();
-	
-    // Draw The Map
-    desenhaMapa(gameMap);
 
-    glutSwapBuffers();
+	// Draw The Map
+	desenhaMapa();
+
+	glutSwapBuffers();
 }
 
 
-static void drawObject(float column, float row, int object) {
+void drawObject(float column, float row, int object) {
 	float color[3];
+
+	glPushMatrix();
+	glTranslatef (column + TAM, row + TAM, 0.0);
 	
 	switch(object) {
-		case 0: // Cinza
-			color[0] = 64.0;
-			color[1] = 64.0;
-			color[2] = 64.0;
-			break;
-		case 1: // Azul
-			color[0] = 0;
-			color[1] = 0;
-			color[2] = 255;
-			break;
-		case 2: // Pastilha
-			color[0] = 95.0;
-			color[1] = 159.0;
-			color[2] = 159.0;
-			break;
-		case 3:
-			color[0] = 127.0;
-			color[1] = 0.0;
-			color[2] = 255.0;
-			break;
-		case 4:
-			color[0] = 254.0;
-			color[1] = 15.0;
-			color[2] = 92.0;
-			break;
-		case 5:
-			color[0] = 254.0;
-			color[1] = 0.0;
-			color[2] = 0.0;
-			break;
-		case 6:
-			color[0] = 254.0;
-			color[1] = 0.0;
-			color[2] = 0.0;
-			break;
-		case 7:
-			color[0] = 254.0;
-			color[1] = 0.0;
-			color[2] = 0.0;
-			break;
-		case 8:
-			color[0] = 254.0;
-			color[1] = 0.0;
-			color[2] = 0.0;
-			break;
-		case 9:
-			color[0] = 255.0;
-			color[1] = 255.0;
-			color[2] = 0.0;
-			break;
+	case 0: // Cinza
+		glColor3f(112, 112, 112);
+		glutSolidCube(TAM);
+		break;
+	case 1: // Azul
+		glColor3f(0.0, 0.0, 255.0);
+		glutSolidCube(TAM);
+		break;
+	case 2: // Pastilha
+		glColor3f(95, 159, 159);
+		glutSolidSphere(TAM*0.2, 30, 30);
+		break;
+	case 3: // Super Power
+		glColor3f(130, 130, 150);
+		glutSolidSphere(TAM*0.4, 30, 30); 
+		break;
+	case 4: // Door
+		glColor3f(205, 127, 50); 
+		glutSolidCube(TAM);
+		break;
+	case 5:
+		glColor3f(230, 0, 0); 
+		glutSolidSphere(TAM*0.75, 30, 30);
+		break;
+	case 6:
+		glColor3f(230, 0, 0); 
+		glutSolidSphere(TAM*0.75, 30, 30);
+		break;
+	case 7:
+		glColor3f(230, 0, 0); 
+		glutSolidSphere(TAM*0.75, 30, 30);
+		break;
+	case 8:
+		glColor3f(230, 0, 0); 
+		glutSolidSphere(TAM*0.75, 30, 30);
+		break;
+	case 9:
+		glColor3f(230, 230, 0); 
+		glutSolidSphere(TAM*0.75, 30, 30);
+		break;
 	}
 	
-	
-	glPushMatrix();
-		glTranslatef (column + TAM, row + TAM, 0.0);
-		glColor3f(color[0], color[1], color[2]);
-		glutSolidCube (TAM);
 	glPopMatrix();
-	
-	
 }
 
 
-static void desenhaMapa(int gameMap[MapSizeY][MapSizeX]){
-	int i, j;
-	for(i=0; i < MapSizeY; i++)
-		for(j=0; j < MapSizeX; j++)
-			drawObject(MAT2X(j), MAT2Y(i), gameMap[i][j]);
+void desenhaMapa() {
+	for(int i = 0; i < MAPSIZE; i++)
+		for(int j = 0; j < MAPSIZE; j++)
+			drawObject(MAT2X(j), MAT2Y(i), gameEngine.gameMap[i][j]);
 }
 
 
-static void key(unsigned char key, int x, int y)
-{
-    switch (key) 
-    {
-        case 27 : 
-        case 'q':
-            exit(0);
-            break;
-    }
+void key(unsigned char key, int x, int y) {
+	switch (key) {
+	case 27 :
+	case 'q':
+		exit(0);
+		break;
+	}
 
-    glutPostRedisplay();
+	glutPostRedisplay();
 }
+
+void showGameMap() {
+	cout << "########## GAME MAP ###########" << endl;
+	for(int i = 0; i < MAPSIZE; i++) {
+		for(int j = 0; j < MAPSIZE; j++) {
+			cout << gameEngine.gameMap[i][j] << " ";
+		}
+		cout << endl;
+	}
+	cout << "###############################" << endl;
+}
+
+
