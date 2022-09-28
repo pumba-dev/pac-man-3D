@@ -7,8 +7,16 @@
 // LIBRARYS
 #include <GL/glut.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <iostream>
+using namespace std;
 
-// MAP
+// VARIABLES
+// -- Window
+static int WindowSizeX = 720;
+static int WindowSizeY = 720;
+
+// -- Map
 #define FLOOR 0
 #define WALL 1
 #define FOOD 2
@@ -20,104 +28,151 @@
 #define PURPLEGHOST 8
 #define PACMAN 9
 
-static int gameMap[22][22] = {
-1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-1,2,2,2,2,2,2,2,1,2,2,2,1,2,2,2,2,2,2,2,1
-1,2,1,1,2,1,1,2,2,2,1,2,1,2,1,2,1,2,1,2,1
-1,2,1,1,2,1,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1
-1,2,1,2,2,2,2,2,2,2,1,2,2,2,1,2,2,3,2,2,1
-1,2,1,2,1,1,2,2,1,2,1,2,1,1,1,1,1,2,1,1,1
-1,2,3,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1
-1,2,1,1,1,2,1,2,1,1,4,1,1,2,1,2,2,1,1,2,1
-1,2,2,2,2,2,2,2,1,1,8,1,1,2,1,2,2,2,1,2,1
-1,1,2,1,2,1,1,2,1,5,6,7,1,2,1,2,1,2,2,2,1
-1,1,2,1,2,1,1,2,1,1,1,1,1,2,2,2,1,1,2,1,1
-1,1,2,1,2,1,1,2,1,2,2,2,1,1,1,2,2,2,2,2,1
-1,2,2,1,2,2,2,2,2,2,1,2,2,2,1,1,1,1,1,2,1
-1,2,1,1,1,1,1,2,1,1,1,1,1,2,2,2,1,2,2,2,1
-1,2,2,2,2,2,2,2,2,2,1,2,2,2,1,2,2,2,1,2,1
-1,2,1,1,1,2,1,1,1,2,1,2,1,1,1,2,1,2,1,2,1
-1,2,2,2,1,3,2,2,2,2,9,2,2,2,1,2,2,2,1,2,1
-1,2,1,2,1,2,1,2,1,2,1,1,1,2,2,2,1,1,1,2,1
-1,2,1,2,1,2,1,2,1,2,1,2,2,2,1,2,2,2,2,3,1
-1,2,1,2,1,2,1,2,1,2,1,2,1,1,1,1,1,1,1,2,1
-1,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,1
-1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+#define MapSizeX 20
+#define MapSizeY 20
+
+typedef struct {
+	int gameMap[MapSizeY][MapSizeX];
+	int foodCount;
+	int 
+	
 }
+
+
+// Program Functions
+int main(int argc, char *argv[]);
+static void reshape(int width, int height);
+static void display(void);
+static void drawObject(float column, float row, int object);
+static void desenhaMapa(int gameMap[MapSizeY][MapSizeX]);
+static void key(unsigned char key, int x, int y);
+
+int main(int argc, char *argv[])
+{
+    glutInit(&argc, argv); // Init Glut
+    glutInitWindowSize(WindowSizeX, WindowSizeY); // Define Window Size
+    glutInitWindowPosition(10,10); // Window Started Position
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode 
+    glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
+
+	readArchiveMap();
+	
+    glutReshapeFunc(reshape);
+    glutDisplayFunc(display);
+    glutKeyboardFunc(key);
+
+    glClearColor(0,0,0,1);
+
+    glutMainLoop();
+
+    return EXIT_SUCCESS;
+}
+
+static void readArchiveMap() {
+	
+}
+
 
 /* GLUT callback Handlers */
 
-static void 
-resize(int width, int height)
-{
-    const float ar = (float) width / (float) height;
-    
-    glViewport(0, 0, width, height);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(-ar, ar, -1.0, 1.0, 2.0, 100.0);
-    
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity() ;
+static void reshape(int w, int h)
+{    
+    glMatrixMode (GL_PROJECTION);
+	glLoadIdentity();
+
+	glViewport (0, 0, w, h);
+
+	glMatrixMode (GL_MODELVIEW);
 }
 
-static void 
-display(void)
+static void display(void)
 {
-    const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
-    const double a = t*90.0;
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glColor3d(1,0,0);
-
-    glPushMatrix();
-        glTranslated(-2.4,1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutSolidSphere(1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(0,1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutSolidCone(1,1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(2.4,1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutSolidTorus(0.2,0.8,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(-2.4,-1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutWireSphere(1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(0,-1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutWireCone(1,1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(2.4,-1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutWireTorus(0.2,0.8,slices,stacks);
-    glPopMatrix();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clean Collor Buffer
+	glLoadIdentity();
+	
+    // Draw The Map
+    desenhaMapa(gameMap);
 
     glutSwapBuffers();
 }
 
 
-static void 
-key(unsigned char key, int x, int y)
+static void drawObject(float column, float row, int object) {
+	float color[3];
+	
+	switch(object) {
+		case 0: // Cinza
+			color[0] = 64.0;
+			color[1] = 64.0;
+			color[2] = 64.0;
+			break;
+		case 1: // Azul
+			color[0] = 0;
+			color[1] = 0;
+			color[2] = 255;
+			break;
+		case 2: // Pastilha
+			color[0] = 95.0;
+			color[1] = 159.0;
+			color[2] = 159.0;
+			break;
+		case 3:
+			color[0] = 127.0;
+			color[1] = 0.0;
+			color[2] = 255.0;
+			break;
+		case 4:
+			color[0] = 254.0;
+			color[1] = 15.0;
+			color[2] = 92.0;
+			break;
+		case 5:
+			color[0] = 254.0;
+			color[1] = 0.0;
+			color[2] = 0.0;
+			break;
+		case 6:
+			color[0] = 254.0;
+			color[1] = 0.0;
+			color[2] = 0.0;
+			break;
+		case 7:
+			color[0] = 254.0;
+			color[1] = 0.0;
+			color[2] = 0.0;
+			break;
+		case 8:
+			color[0] = 254.0;
+			color[1] = 0.0;
+			color[2] = 0.0;
+			break;
+		case 9:
+			color[0] = 255.0;
+			color[1] = 255.0;
+			color[2] = 0.0;
+			break;
+	}
+	
+	
+	glPushMatrix();
+		glTranslatef (column + TAM, row + TAM, 0.0);
+		glColor3f(color[0], color[1], color[2]);
+		glutSolidCube (TAM);
+	glPopMatrix();
+	
+	
+}
+
+
+static void desenhaMapa(int gameMap[MapSizeY][MapSizeX]){
+	int i, j;
+	for(i=0; i < MapSizeY; i++)
+		for(j=0; j < MapSizeX; j++)
+			drawObject(MAT2X(j), MAT2Y(i), gameMap[i][j]);
+}
+
+
+static void key(unsigned char key, int x, int y)
 {
     switch (key) 
     {
@@ -125,80 +180,7 @@ key(unsigned char key, int x, int y)
         case 'q':
             exit(0);
             break;
-
-        case '+':
-            slices++;
-            stacks++;
-            break;
-
-        case '-':
-            if (slices>3 && stacks>3)
-            {
-                slices--;
-                stacks--;
-            }
-            break;
     }
 
     glutPostRedisplay();
-}
-
-static void 
-idle(void)
-{
-    glutPostRedisplay();
-}
-
-const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
-const GLfloat light_diffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
-
-const GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0f };
-const GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0f };
-const GLfloat mat_specular[]   = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat high_shininess[] = { 100.0f };
-
-/* Program entry point */
-
-int 
-main(int argc, char *argv[])
-{
-    glutInit(&argc, argv);
-    glutInitWindowSize(640,480);
-    glutInitWindowPosition(10,10);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
-
-    glutCreateWindow("PacMan 3D - Pumba Developer");
-
-    glutReshapeFunc(resize);
-    glutDisplayFunc(display);
-    glutKeyboardFunc(key);
-    glutIdleFunc(idle);
-
-    glClearColor(1,1,1,1);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-
-    glEnable(GL_LIGHT0);
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_COLOR_MATERIAL);
-    glEnable(GL_LIGHTING);
-
-    glLightfv(GL_LIGHT0, GL_AMBIENT,  light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE,  light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
-
-    glutMainLoop();
-
-    return EXIT_SUCCESS;
 }
