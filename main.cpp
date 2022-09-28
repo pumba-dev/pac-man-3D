@@ -39,13 +39,24 @@ using namespace std;
 
 // -- GamePlay
 typedef struct {
+	int x, y;
+} Coord;
+
+typedef struct {
 	int gameMap[MAPSIZE][MAPSIZE];
 	int foodCount;
 	string gameMapName;
-} pacmanGame;
 
-pacmanGame gameEngine;
+} PacmanGame;
 
+typedef struct {
+	int x, y;
+	int points;
+	bool invencible;
+} Player;
+
+PacmanGame gameEngine;
+Player pacmanPlayer;
 
 // Program Functions
 int main(int argc, char * argv[]);
@@ -57,6 +68,8 @@ void desenhaMapa();
 void key(unsigned char key, int x, int y);
 void readArchiveMap(string mapName);
 void showGameMap();
+void movePacman(int moveCode);
+void initGame();
 
 // Main
 int main(int argc, char * argv[]) {
@@ -67,10 +80,8 @@ int main(int argc, char * argv[]) {
 	glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
 	glClearColor(0, 0, 0, 1); // Window Background Color
 
-	gameEngine.gameMapName = "pacman-map-01.txt";
-	readArchiveMap(gameEngine.gameMapName);
-	showGameMap();
-	
+	initGame();
+
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(key);
@@ -79,6 +90,14 @@ int main(int argc, char * argv[]) {
 	glutMainLoop();
 
 	return EXIT_SUCCESS;
+}
+
+void initGame() {
+	gameEngine.foodCount = 0;
+	pacmanPlayer.points = 0;
+	gameEngine.gameMapName = "pacman-map-01.txt";
+	readArchiveMap(gameEngine.gameMapName);
+	showGameMap();
 }
 
 void clockFunction(int clock) {
@@ -110,19 +129,31 @@ void readArchiveMap(string mapName) {
 
 				if((int)str != 9) { // verify if is a empty value
 					gameEngine.gameMap[row][column] = objectNumber;
-					//cout << "index:: " << row << "|" <<  column << " || objectNumber:: " << objectNumber << " || gameMap:: " << gameEngine.gameMap[row][column] << endl;
-					column += 1;
+					// cout << "index:: " << row << "|" <<  column << " || objectNumber:: " << objectNumber << " || gameMap:: " << gameEngine.gameMap[row][column] << endl;
+
+					// verify foods and count
+					if(objectNumber == FOOD) {
+						gameEngine.foodCount += 1;
+					}
+
+					// verify and set pacman position
+					if(objectNumber == PACMAN) {
+						pacmanPlayer.x = column;
+						pacmanPlayer.y = row;
+					}
+
+					column += 1; // Incremente Column
 				}
 			}
-			
+
 			// Protect Matriz Size
-			if(row >= MAPSIZE -1 && column >= MAPSIZE -1) {
-				cout << "CABO PORRA" << endl;
+			if(row >= MAPSIZE - 1 && column >= MAPSIZE - 1) {
+				// cout << "CABO PORRA" << endl;
 				break;
 			} else {
 				row += 1;
-				column = 0;	
-			}		
+				column = 0;
+			}
 		}
 		archiveMap.close();
 		cout << "Arquivo de Salvo com Sucesso!\n" << endl;
@@ -162,54 +193,52 @@ void display(void) {
 
 
 void drawObject(float column, float row, int object) {
-	float color[3];
-
 	glPushMatrix();
 	glTranslatef (column + TAM, row + TAM, 0.0);
-	
+
 	switch(object) {
-	case 0: // Cinza
-		glColor3f(112, 112, 112);
-		glutSolidCube(TAM);
+	case 0:
+		//glColor3f(0, 0, 0);
+		//glutSolidCube(TAM);
 		break;
-	case 1: // Azul
+	case 1:
 		glColor3f(0.0, 0.0, 255.0);
 		glutSolidCube(TAM);
 		break;
-	case 2: // Pastilha
+	case 2:
 		glColor3f(95, 159, 159);
-		glutSolidSphere(TAM*0.2, 30, 30);
+		glutSolidSphere(TAM * 0.2, 30, 30);
 		break;
-	case 3: // Super Power
+	case 3:
 		glColor3f(130, 130, 150);
-		glutSolidSphere(TAM*0.4, 30, 30); 
+		glutSolidSphere(TAM * 0.4, 30, 30);
 		break;
-	case 4: // Door
-		glColor3f(205, 127, 50); 
+	case 4:
+		glColor3f(205, 127, 50);
 		glutSolidCube(TAM);
 		break;
 	case 5:
-		glColor3f(230, 0, 0); 
-		glutSolidSphere(TAM*0.75, 30, 30);
+		glColor3f(230, 0, 0);
+		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
 	case 6:
-		glColor3f(230, 0, 0); 
-		glutSolidSphere(TAM*0.75, 30, 30);
+		glColor3f(230, 0, 0);
+		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
 	case 7:
-		glColor3f(230, 0, 0); 
-		glutSolidSphere(TAM*0.75, 30, 30);
+		glColor3f(230, 0, 0);
+		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
 	case 8:
-		glColor3f(230, 0, 0); 
-		glutSolidSphere(TAM*0.75, 30, 30);
+		glColor3f(230, 0, 0);
+		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
 	case 9:
-		glColor3f(230, 230, 0); 
-		glutSolidSphere(TAM*0.75, 30, 30);
+		glColor3f(230, 230, 0);
+		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
 	}
-	
+
 	glPopMatrix();
 }
 
@@ -224,12 +253,167 @@ void desenhaMapa() {
 void key(unsigned char key, int x, int y) {
 	switch (key) {
 	case 27 :
-	case 'q':
 		exit(0);
 		break;
+	case 'w':
+		movePacman(0); // up
+		break;
+	case 'a':
+		movePacman(1); // left
+		break;
+	case 's':
+		movePacman(2); // down
+		break;
+	case 'd':
+		movePacman(3); // right
+		break;
+
 	}
 
 	glutPostRedisplay();
+}
+
+
+void movePacman(int moveCode) {
+	Coord north = {pacmanPlayer.x, pacmanPlayer.y - 1};
+	Coord left = {pacmanPlayer.x - 1, pacmanPlayer.y};
+	Coord down = {pacmanPlayer.x, pacmanPlayer.y + 1};
+	Coord right = {pacmanPlayer.x + 1, pacmanPlayer.y};
+
+	switch(moveCode) {
+	case 0:
+		if(gameEngine.gameMap[north.y][north.x] == WALL) {
+			cout << "Walking Upper Forbidden || WALL" << endl;
+		} else if(gameEngine.gameMap[north.y][north.x] == FLOOR) {
+			cout << "Walking Upper || FLOOR" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[north.y][north.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = north.x;
+			pacmanPlayer.y = north.y;
+		} else if (gameEngine.gameMap[north.y][north.x] == FOOD) {
+			cout << "Walking Upper || FOOD" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[north.y][north.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = north.x;
+			pacmanPlayer.y = north.y;
+			// Add Point to Pacman
+			pacmanPlayer.points += 1;
+		} else if (gameEngine.gameMap[north.y][north.x] == POWER) {
+			cout << "Walking Upper || POWER" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[north.y][north.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = north.x;
+			pacmanPlayer.y = north.y;
+			// Set PacMan Invensible
+			pacmanPlayer.invencible = true;
+		}
+		break;
+	case 1:
+		if(gameEngine.gameMap[left.y][left.x] == WALL) {
+			cout << "Walking Left Forbidden || WALL" << endl;
+		} else if(gameEngine.gameMap[left.y][left.x] == FLOOR) {
+			cout << "Walking Left || FLOOR" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[left.y][left.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = left.x;
+			pacmanPlayer.y = left.y;
+		} else if (gameEngine.gameMap[left.y][left.x] == FOOD) {
+			cout << "Walking Left || FOOD" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[left.y][left.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = left.x;
+			pacmanPlayer.y = left.y;
+			// Add Point to Pacman
+			pacmanPlayer.points += 1;
+		} else if (gameEngine.gameMap[left.y][left.x] == POWER) {
+			cout << "Walking Left || POWER" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[left.y][left.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = left.x;
+			pacmanPlayer.y = left.y;
+			// Set PacMan Invensible
+			pacmanPlayer.invencible = true;
+		}
+		break;
+	case 2:
+		if(gameEngine.gameMap[down.y][down.x] == WALL) {
+			cout << "Walking Down Forbidden || WALL" << endl;
+		} else if(gameEngine.gameMap[down.y][down.x] == FLOOR) {
+			cout << "Walking Down || FLOOR" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[down.y][down.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = down.x;
+			pacmanPlayer.y = down.y;
+		} else if (gameEngine.gameMap[down.y][down.x] == FOOD) {
+			cout << "Walking Down || FOOD" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[down.y][down.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = down.x;
+			pacmanPlayer.y = down.y;
+			// Add Point to Pacman
+			pacmanPlayer.points += 1;
+		} else if (gameEngine.gameMap[down.y][down.x] == POWER) {
+			cout << "Walking Down || POWER" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[down.y][down.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = down.x;
+			pacmanPlayer.y = down.y;
+			// Set PacMan Invensible
+			pacmanPlayer.invencible = true;
+		}
+		break;
+	case 3:
+		if(gameEngine.gameMap[right.y][right.x] == WALL) {
+			cout << "Walking Right Forbidden || WALL" << endl;
+		} else if(gameEngine.gameMap[right.y][right.x] == FLOOR) {
+			cout << "Walking Right || FLOOR" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[right.y][right.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = right.x;
+			pacmanPlayer.y = right.y;
+		} else if (gameEngine.gameMap[right.y][right.x] == FOOD) {
+			cout << "Walking Right || FOOD" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[right.y][right.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = right.x;
+			pacmanPlayer.y = right.y;
+			// Add Point to Pacman
+			pacmanPlayer.points += 1;
+		} else if (gameEngine.gameMap[right.y][right.x] == POWER) {
+			cout << "Walking Right || POWER" << endl;
+			// Change Map Object
+			gameEngine.gameMap[pacmanPlayer.y][pacmanPlayer.x] = FLOOR; // current position = floor
+			gameEngine.gameMap[right.y][right.x] = PACMAN; // next position = pacman
+			// Set New Pacman Position
+			pacmanPlayer.x = right.x;
+			pacmanPlayer.y = right.y;
+			// Set PacMan Invensible
+			pacmanPlayer.invencible = true;
+		}
+		break;
+	}
 }
 
 void showGameMap() {
