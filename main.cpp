@@ -13,6 +13,8 @@
 using namespace std;
 #include <conio.h>
 #include <fstream>
+#include "Textura.h"
+#include "GameObjectDesigner.h"
 
 
 // VARIABLES
@@ -58,6 +60,10 @@ typedef struct {
 PacmanGame gameEngine;
 Player pacmanPlayer;
 
+// -- Textures
+
+Textura gameTex[9];
+
 // Program Functions
 int main(int argc, char * argv[]);
 void clockFunction(int clock);
@@ -69,6 +75,8 @@ void key(unsigned char key, int x, int y);
 void readArchiveMap(string mapName);
 void showGameMap();
 void movePacman(int moveCode);
+void initLighting();
+void initCullFace();
 void initGame();
 
 // Main
@@ -79,7 +87,11 @@ int main(int argc, char * argv[]) {
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE); // Display Mode
 	glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
 	glClearColor(0, 0, 0, 1); // Window Background Color
+	
+	glEnable(GL_DEPTH_TEST);
 
+	initCullFace();
+	initLighting();
 	initGame();
 
 	glutDisplayFunc(display);
@@ -90,6 +102,35 @@ int main(int argc, char * argv[]) {
 	glutMainLoop();
 
 	return EXIT_SUCCESS;
+}
+
+void initLighting() {
+	// -- GL_LIGHTING
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_COLOR_MATERIAL);
+
+	float globalAmb[] = { 0.1f, 0.1f, 0.1f, 1.f };
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmb);
+
+	float light0[4][4] = {
+				{0.1f, 0.1f, 0.1f, 1.f}, // ambient
+				{0.8f, 0.8f, 0.8f, 1.f}, // diffuse
+				{ 1.f,  1.f,  1.f, 1.f }, // specular
+				{0.f, 0.f, 1.f, 1.f}    // position
+	};
+
+	glLightfv(GL_LIGHT0, GL_AMBIENT,  &light0[0][0]);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,  &light0[1][0]);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, &light0[2][0]);
+	glLightfv(GL_LIGHT0, GL_POSITION, &light0[3][0]);
+}
+
+void initCullFace() {
+	// -- Face Culling
+	glEnable(GL_CULL_FACE); // Enable Face Culling
+	glFrontFace(GL_CCW); // Front Face = Counter Clock Wise
+	glCullFace(GL_BACK); // Cull Face = Clock Wise (Back)
 }
 
 void initGame() {
@@ -163,7 +204,7 @@ void readArchiveMap(string mapName) {
 }
 
 void reshape(int w, int h) {
-	// Evita a divisao por zero
+	// Evitar Divis�o por Zero
 	if(h == 0) h = 1;
 
 	glViewport (0, 0, w, h); // Viewport Dimensions
@@ -172,8 +213,9 @@ void reshape(int w, int h) {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
+	float aspect = (float)w / (float)h;
+	gluPerspective(60, aspect, 1.0, 20.0);
 
-	gluPerspective(60, (float)w / (float)h, 1.0, 20.0);
 	gluLookAt(0.0, -1.0, 2.5, 	// posição da câmera (olho)
 			  0.0, 0.0, 0.0, 	// centro da cena
 			  0.0, 1.0, 0.0); // direção de cima
@@ -183,9 +225,9 @@ void reshape(int w, int h) {
 
 void display(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clean Collor Buffer
-	glLoadIdentity();
-
-	// Draw The Map
+	glLoadIdentity(); // Load Identity Matriz
+	
+	// -- Draw The Map And Objects
 	desenhaMapa();
 
 	glutSwapBuffers();
@@ -197,43 +239,45 @@ void drawObject(float column, float row, int object) {
 	glTranslatef (column + TAM, row + TAM, 0.0);
 
 	switch(object) {
-	case 0:
-		//glColor3f(0, 0, 0);
-		//glutSolidCube(TAM);
+	case FLOOR: {
+		// Nothing
 		break;
-	case 1:
-		glColor3f(0.0, 0.0, 255.0);
-		glutSolidCube(TAM);
+	}
+	case WALL: {
+		float color[3] = {0.0, 0.0, 220.0};
+		desenhaCubo( & gameTex[WALL], TAM, color);
 		break;
-	case 2:
+	}
+	case FOOD:
 		glColor3f(95, 159, 159);
 		glutSolidSphere(TAM * 0.2, 30, 30);
 		break;
-	case 3:
+	case POWER:
 		glColor3f(130, 130, 150);
 		glutSolidSphere(TAM * 0.4, 30, 30);
 		break;
-	case 4:
-		glColor3f(205, 127, 50);
-		glutSolidCube(TAM);
+	case DOOR:{
+		float color[3] = {205, 127, 50};
+		desenhaCubo( & gameTex[DOOR], TAM, color);
 		break;
-	case 5:
+	}
+	case REDGHOST:
 		glColor3f(230, 0, 0);
-		glutSolidSphere(TAM * 0.75, 30, 30);
+		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
-	case 6:
+	case BLUEGHOST:
 		glColor3f(230, 0, 0);
-		glutSolidSphere(TAM * 0.75, 30, 30);
+		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
-	case 7:
+	case ORANGEGHOST:
 		glColor3f(230, 0, 0);
-		glutSolidSphere(TAM * 0.75, 30, 30);
+		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
-	case 8:
+	case PURPLEGHOST:
 		glColor3f(230, 0, 0);
-		glutSolidSphere(TAM * 0.75, 30, 30);
+		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
-	case 9:
+	case PACMAN:
 		glColor3f(230, 230, 0);
 		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
@@ -244,9 +288,18 @@ void drawObject(float column, float row, int object) {
 
 
 void desenhaMapa() {
+	// Set and Load Textures
+	glEnable(GL_TEXTURE_2D);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	
+	gameTex[WALL].load("textures/brick.png");
+	gameTex[DOOR].load("textures/door.png");
+
 	for(int i = 0; i < MAPSIZE; i++)
-		for(int j = 0; j < MAPSIZE; j++)
+		for(int j = 0; j < MAPSIZE; j++) {
+			// drawObject(MAT2X(j), MAT2Y(i), gameEngine.gameMap[i][j]);
 			drawObject(MAT2X(j), MAT2Y(i), gameEngine.gameMap[i][j]);
+		}
 }
 
 
