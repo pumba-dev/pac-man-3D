@@ -7,22 +7,6 @@ struct vector3d {
 	float x, y, z;
 	vector3d() : x(0.0), y(0.0), z(0.0) {}
 	vector3d(float x_, float y_, float z_) : x(x_), y(y_), z(z_) {}
-	vector3d operator+(const vector3d & v)const { return vector3d(x + v.x, y + v.y, z + v.z); }
-	vector3d operator*(float k) {
-		return vector3d(x * k, y * k, z * k);
-	}
-	float mag() {
-		return sqrt(x * x + y * y + z * z);
-	}
-	void normaliza() {
-		float m = mag();
-		x = x / m;
-		y = y / m;
-		z = z / m;
-	}
-	vector3d prodVetorial(vector3d v) {
-		return vector3d(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
-	}
 };
 
 void draw(vector3d p1, vector3d p2, vector3d p3, vector3d p4, float cor[3]) {

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <sstream>
+#include <time.h>
 using namespace std;
 #include <conio.h>
 #include <fstream>
@@ -48,6 +49,8 @@ typedef struct {
 	int gameMap[MAPSIZE][MAPSIZE];
 	int foodCount;
 	string gameMapName;
+	int doorX, doorY;
+	bool inGame;
 
 } PacmanGame;
 
@@ -55,10 +58,14 @@ typedef struct {
 	int x, y;
 	int points;
 	bool invencible;
+	bool dead;
+	int objectBelowPlayer;
+	bool hasStarted;
 } Player;
 
 PacmanGame gameEngine;
 Player pacmanPlayer;
+Player ghostPlayer[4];
 
 // -- Textures
 
@@ -75,8 +82,11 @@ void key(unsigned char key, int x, int y);
 void readArchiveMap(string mapName);
 void showGameMap();
 void movePacman(int moveCode);
+void moveGhostRandomly(int ghostID);
 void initLighting();
 void initCullFace();
+int randNumber(int min, int max);
+void knockDownGameDoor();
 void initGame();
 
 // Main
@@ -84,16 +94,14 @@ int main(int argc, char * argv[]) {
 	glutInit( & argc, argv); // Init Glut
 	glutInitWindowSize(WindowSizeX, WindowSizeY); // Define Window Size
 	glutInitWindowPosition(10, 10); // Window Started Position
-	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE); // Display Mode
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode
 	glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
 	glClearColor(0, 0, 0, 1); // Window Background Color
-	
-	glEnable(GL_DEPTH_TEST);
 
 	initCullFace();
 	initLighting();
 	initGame();
-
+	
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(key);
@@ -114,37 +122,64 @@ void initLighting() {
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmb);
 
 	float light0[4][4] = {
-				{0.1f, 0.1f, 0.1f, 1.f}, // ambient
-				{0.8f, 0.8f, 0.8f, 1.f}, // diffuse
-				{ 1.f,  1.f,  1.f, 1.f }, // specular
-				{0.f, 0.f, 1.f, 1.f}    // position
+		{0.1f, 0.1f, 0.1f, 1.f}, // ambient
+		{0.8f, 0.8f, 0.8f, 1.f}, // diffuse
+		{ 1.f,  1.f,  1.f, 1.f }, // speculargi
+		{0.f, 0.f, 1.f, 1.f}    // position
 	};
 
-	glLightfv(GL_LIGHT0, GL_AMBIENT,  &light0[0][0]);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE,  &light0[1][0]);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, &light0[2][0]);
-	glLightfv(GL_LIGHT0, GL_POSITION, &light0[3][0]);
+	glLightfv(GL_LIGHT0, GL_AMBIENT,  & light0[0][0]);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,  & light0[1][0]);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, & light0[2][0]);
+	glLightfv(GL_LIGHT0, GL_POSITION, & light0[3][0]);
 }
 
 void initCullFace() {
 	// -- Face Culling
+	glEnable(GL_DEPTH_TEST); // Enable Z-buffer Algorithm
 	glEnable(GL_CULL_FACE); // Enable Face Culling
-	glFrontFace(GL_CCW); // Front Face = Counter Clock Wise
 	glCullFace(GL_BACK); // Cull Face = Clock Wise (Back)
 }
 
 void initGame() {
+	// Reset Game Data
 	gameEngine.foodCount = 0;
 	pacmanPlayer.points = 0;
+	pacmanPlayer.invencible = false;
+	pacmanPlayer.dead = false;
+
+	// Set and Load Game Map
 	gameEngine.gameMapName = "pacman-map-01.txt";
 	readArchiveMap(gameEngine.gameMapName);
 	showGameMap();
+
+	// Open The Doors
+	knockDownGameDoor();
+
+	// Init Pacman Hunting
+
 }
 
-void clockFunction(int clock) {
-	// printf("## Clock %d ##\n", clock);
 
-	glutTimerFunc(100, clockFunction, clock + 1);
+void clockFunction(int clock) {
+	printf("## Clock %d ##\n", clock);
+
+	// Move Ghost
+	int sortedGhost = randNumber(0, 3);
+	moveGhostRandomly(sortedGhost);
+
+	glutTimerFunc(200, clockFunction, clock + 1);
+}
+
+void knockDownGameDoor() {
+	int doorRow = gameEngine.doorY;
+	int doorColumn = gameEngine.doorX;
+	int doorPositionObject = gameEngine.gameMap[doorRow][doorColumn];
+	if(doorPositionObject == DOOR) {
+		gameEngine.gameMap[doorRow][doorColumn] = FLOOR;
+	} else {
+		cout << "Erro ao derrubar as portas para iniciar o jogo!!" << endl;
+	}
 }
 
 void readArchiveMap(string mapName) {
@@ -172,15 +207,35 @@ void readArchiveMap(string mapName) {
 					gameEngine.gameMap[row][column] = objectNumber;
 					// cout << "index:: " << row << "|" <<  column << " || objectNumber:: " << objectNumber << " || gameMap:: " << gameEngine.gameMap[row][column] << endl;
 
-					// verify foods and count
+					// verify Objects and Set Params
 					if(objectNumber == FOOD) {
 						gameEngine.foodCount += 1;
-					}
-
-					// verify and set pacman position
-					if(objectNumber == PACMAN) {
+					} else if(objectNumber == PACMAN) {
 						pacmanPlayer.x = column;
 						pacmanPlayer.y = row;
+					} else if (objectNumber == DOOR) {
+						gameEngine.doorX = column;
+						gameEngine.doorY = row;
+					} else if (objectNumber == REDGHOST) {
+						ghostPlayer[0].x = column;
+						ghostPlayer[0].y = row;
+						ghostPlayer[0].hasStarted = true;
+						ghostPlayer[0].objectBelowPlayer = 0;
+					} else if (objectNumber == BLUEGHOST) {
+						ghostPlayer[1].x = column;
+						ghostPlayer[1].y = row;
+						ghostPlayer[1].hasStarted = true;
+						ghostPlayer[1].objectBelowPlayer = 0;
+					} else if (objectNumber == PURPLEGHOST) {
+						ghostPlayer[2].x = column;
+						ghostPlayer[2].y = row;
+						ghostPlayer[2].hasStarted = true;
+						ghostPlayer[2].objectBelowPlayer = 0;
+					} else if (objectNumber == ORANGEGHOST) {
+						ghostPlayer[3].x = column;
+						ghostPlayer[3].y = row;
+						ghostPlayer[3].hasStarted = true;
+						ghostPlayer[3].objectBelowPlayer = 0;
 					}
 
 					column += 1; // Incremente Column
@@ -226,7 +281,7 @@ void reshape(int w, int h) {
 void display(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clean Collor Buffer
 	glLoadIdentity(); // Load Identity Matriz
-	
+
 	// -- Draw The Map And Objects
 	desenhaMapa();
 
@@ -249,36 +304,36 @@ void drawObject(float column, float row, int object) {
 		break;
 	}
 	case FOOD:
-		glColor3f(95, 159, 159);
+		glColor3f(0.8, 0.8, 0.8);
 		glutSolidSphere(TAM * 0.2, 30, 30);
 		break;
 	case POWER:
-		glColor3f(130, 130, 150);
+		glColor3f(0.8, 0.8, 0.8);
 		glutSolidSphere(TAM * 0.4, 30, 30);
 		break;
-	case DOOR:{
+	case DOOR: {
 		float color[3] = {205, 127, 50};
 		desenhaCubo( & gameTex[DOOR], TAM, color);
 		break;
 	}
 	case REDGHOST:
-		glColor3f(230, 0, 0);
+		glColor3f(0.8, 0, 0);
 		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
 	case BLUEGHOST:
-		glColor3f(230, 0, 0);
+		glColor3f(0.8, 0.2, 0.2);
 		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
 	case ORANGEGHOST:
-		glColor3f(230, 0, 0);
+		glColor3f(0.8, 0.2, 0);
 		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
 	case PURPLEGHOST:
-		glColor3f(230, 0, 0);
+		glColor3f(0.8, 0, 0.2);
 		glutSolidSphere(TAM * 0.6, 30, 30);
 		break;
 	case PACMAN:
-		glColor3f(230, 230, 0);
+		glColor3f(1, 1, 0);
 		glutSolidSphere(TAM * 0.75, 30, 30);
 		break;
 	}
@@ -291,7 +346,7 @@ void desenhaMapa() {
 	// Set and Load Textures
 	glEnable(GL_TEXTURE_2D);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	
+
 	gameTex[WALL].load("textures/brick.png");
 	gameTex[DOOR].load("textures/door.png");
 
@@ -326,6 +381,79 @@ void key(unsigned char key, int x, int y) {
 	glutPostRedisplay();
 }
 
+int randNumber(int min, int max) {
+	static bool first = true;
+	if (first) {
+		srand( time(NULL) ); //seeding for the first time only!
+		first = false;
+	}
+	return min + rand() % (( max + 1 ) - min);
+}
+
+void moveGhostRandomly(int ghostID) {
+	// Verify if Ghost has on map
+	if(!ghostPlayer[ghostID].hasStarted) return;
+	
+	// Variables
+	int ghostObjectId = ghostID + 5;
+	Coord lastGhostCoord = {ghostPlayer[ghostID].x, ghostPlayer[ghostID].y};
+
+	Coord nextMove[4] = {
+		{ghostPlayer[ghostID].x, ghostPlayer[ghostID].y - 1},
+		{ghostPlayer[ghostID].x - 1, ghostPlayer[ghostID].y},
+		{ghostPlayer[ghostID].x, ghostPlayer[ghostID].y + 1},
+		{ghostPlayer[ghostID].x + 1, ghostPlayer[ghostID].y}
+	}; // 0 - North | 1 - Left | 2 - South | 3 - Left
+
+	int nextObject[4] = {
+		gameEngine.gameMap[nextMove[0].y][nextMove[0].x],
+		gameEngine.gameMap[nextMove[1].y][nextMove[1].x],
+		gameEngine.gameMap[nextMove[2].y][nextMove[2].x],
+		gameEngine.gameMap[nextMove[3].y][nextMove[3].x]
+	};  // 0 - North | 1 - Left | 2 - South | 3 - Left
+
+	// Check If Is Prisoned
+	int possibleMoves = 0;
+	for(int i = 0; i < 4 ; i++) {
+		if(nextObject[i] == FLOOR || nextObject[i] == FOOD || nextObject[i] == POWER || nextObject[i] == PACMAN)
+			possibleMoves += 1;
+	}
+	if(possibleMoves == 0) {
+		cout << "Ghost " << ghostID << " is Prisoned!!" << endl;
+		return;
+	}
+
+	// If Freedom, Generate Valid Random Move
+	int randMove;
+	do {
+		randMove = randNumber(0, 3);
+
+	} while (
+		nextObject[randMove] == WALL ||
+		nextObject[randMove] == REDGHOST ||
+		nextObject[randMove] == ORANGEGHOST ||
+		nextObject[randMove] == PURPLEGHOST ||
+		nextObject[randMove] == BLUEGHOST
+	);
+	
+	cout << "Ghost " << ghostObjectId << " Rand Move = " << randMove << " Next Object = " << nextObject[randMove] << endl;
+	cout << "Ghost Object Below = " << ghostPlayer[ghostID].objectBelowPlayer << " Next Object Below Ghost = " << gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] << endl;
+	cout << "Ghost Position: (" << lastGhostCoord.x << ", " << lastGhostCoord.y << ") New Ghost Position = " << nextMove[randMove].x << "-" << nextMove[randMove].y << endl;
+
+	
+	// Update Next Ghost Location on Map and Ghost Coord Params
+	gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] = ghostObjectId;
+		
+	gameEngine.gameMap[lastGhostCoord.y][lastGhostCoord.x] = ghostPlayer[ghostID].objectBelowPlayer;
+	
+	ghostPlayer[ghostID].objectBelowPlayer = nextObject[randMove];
+	ghostPlayer[ghostID].x = nextMove[randMove].x;
+	ghostPlayer[ghostID].y = nextMove[randMove].y;
+
+	
+	// Redisplay Objects In New Position
+	glutPostRedisplay();
+}
 
 void movePacman(int moveCode) {
 	Coord north = {pacmanPlayer.x, pacmanPlayer.y - 1};
