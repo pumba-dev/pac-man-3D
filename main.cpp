@@ -12,7 +12,7 @@
 using namespace std;
 #include <sstream>
 #include <time.h>
-#include <windows.h>      
+#include <windows.h>
 #include <mmsystem.h> // Sound
 #include <conio.h>
 #include <fstream>
@@ -30,6 +30,7 @@ using namespace std;
 #define GAMELEVEL 9
 
 // -- Map
+#define GAMEMAPNAME "pacman-map.txt"
 #define FLOOR 0
 #define WALL 1
 #define FOOD 2
@@ -79,23 +80,24 @@ Textura gameTex[9];
 
 // Program Functions
 int main(int argc, char * argv[]);
-void clockFunction(int clock);
+void initCullFace();
+void initLighting();
+void initGame();
+void readArchiveMap(string mapName);
 void reshape(int width, int height);
 void display(void);
+void drawMap();
+void setAndLoadText();
 void drawObject(float column, float row, int object);
-void desenhaMapa();
-void key(unsigned char key, int x, int y);
-void readArchiveMap(string mapName);
-void showGameMap();
-void movePacman(int moveCode);
-void moveGhostRandomly(int ghostID);
-void initLighting();
-void initCullFace();
-int randNumber(int min, int max);
 void checkWinCondition();
 void checkPacmanDead();
+void key(unsigned char key, int x, int y);
+void movePacman(int moveCode);
+void clockFunction(int clock);
 void knockDownGameDoor();
-void initGame();
+void moveGhostRandomly(int ghostID);
+void showGameMap();
+int randNumber(int min, int max);
 
 // Main
 int main(int argc, char * argv[]) {
@@ -105,19 +107,27 @@ int main(int argc, char * argv[]) {
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode
 	glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
 	glClearColor(0, 0, 0, 1); // Window Background Color
-	
+
 	initCullFace();
 	initLighting();
 	initGame();
 
+	glutReshapeFunc(reshape);
 	glutDisplayFunc(display);
-	glutReshapeFunc(reshape);	
 	glutKeyboardFunc(key);
 	glutTimerFunc(100, clockFunction, 1);
-	
+
 	glutMainLoop();
 
 	return EXIT_SUCCESS;
+}
+
+void initCullFace() {
+	// -- Face Culling
+	glEnable(GL_DEPTH_TEST); // Enable Z-buffer Algorithm
+
+	glEnable(GL_CULL_FACE); // Enable Face Culling
+	glCullFace(GL_BACK); // Cull Face = Clock Wise (Back)
 }
 
 void initLighting() {
@@ -142,14 +152,6 @@ void initLighting() {
 	glLightfv(GL_LIGHT0, GL_POSITION, & light0[3][0]);
 }
 
-void initCullFace() {
-	// -- Face Culling
-	glEnable(GL_DEPTH_TEST); // Enable Z-buffer Algorithm
-	
-	glEnable(GL_CULL_FACE); // Enable Face Culling
-	glCullFace(GL_BACK); // Cull Face = Clock Wise (Back)
-}
-
 void initGame() {
 	// Reset Game Data
 	gameEngine.gameBeginning = true;
@@ -159,41 +161,9 @@ void initGame() {
 	pacmanPlayer.invencible = false;
 
 	// Set and Load Game Map
-	gameEngine.gameMapName = "pacman-map-01.txt";
+	gameEngine.gameMapName = GAMEMAPNAME;
 	readArchiveMap(gameEngine.gameMapName);
-	showGameMap();		
-
-}
-
-void clockFunction(int clock) {
-	printf("## Clock %d ##\n", clock);
-	
-	// Play Beginning Music
-	if(gameEngine.gameBeginning) {
-		PlaySound(TEXT("sounds/beginning.wav"), NULL, SND_SYNC);
-		gameEngine.gameBeginning = false;
-	} else {
-		// Open The Doors
-		knockDownGameDoor();
-	}
-
-	// Move Ghost
-	int sortedGhost = randNumber(0, 3);
-	moveGhostRandomly(sortedGhost);
-
-	int clockTime = (1000.0 / GAMELEVEL);
-	glutTimerFunc(clockTime, clockFunction, clock + 1);
-}
-
-void knockDownGameDoor() {
-	int doorRow = gameEngine.doorY;
-	int doorColumn = gameEngine.doorX;
-	int doorPositionObject = gameEngine.gameMap[doorRow][doorColumn];
-	if(doorPositionObject == DOOR) {
-		gameEngine.gameMap[doorRow][doorColumn] = FLOOR;
-	} else {
-		cout << "Erro ao derrubar as portas para iniciar o jogo!!" << endl;
-	}
+	showGameMap();
 }
 
 void readArchiveMap(string mapName) {
@@ -297,28 +267,32 @@ void display(void) {
 	glLoadIdentity(); // Load Identity Matriz
 
 	// -- Draw The Map And Objects
-	desenhaMapa();
+	drawMap();
 
+	// -- Checks
 	checkPacmanDead();
 	checkWinCondition();
 
 	glutSwapBuffers();
 }
 
-void checkWinCondition() {
-	if(pacmanPlayer.points == gameEngine.foodCount) {
-		gameEngine.gameOver = true;
-		PlaySound(TEXT("sounds/gamewin.wav"), NULL, SND_ASYNC);
-	}
+void drawMap() {
+	// Loading Textures
+	setAndLoadText();
+
+	// -- Map
+	for(int i = 0; i < MAPSIZE; i++)
+		for(int j = 0; j < MAPSIZE; j++) {
+			drawObject(MAT2X(j), MAT2Y(i), gameEngine.gameMap[i][j]);
+		}
 }
 
-void checkPacmanDead() {
-	for(int i = 0 ; i < 4 ; i++) {
-		if(ghostPlayer[i].objectBelowPlayer == PACMAN) {
-			gameEngine.gameOver = true;
-			PlaySound(TEXT("sounds/gameover.wav"), NULL, SND_ASYNC);
-		}
-	}
+void setAndLoadText() {
+	glEnable(GL_TEXTURE_2D);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+	gameTex[WALL].load("textures/brick.png");
+	gameTex[DOOR].load("textures/door.png");
 }
 
 void drawObject(float column, float row, int object) {
@@ -373,25 +347,26 @@ void drawObject(float column, float row, int object) {
 	glPopMatrix();
 }
 
-void desenhaMapa() {
-	// Set and Load Textures
-	glEnable(GL_TEXTURE_2D);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+void checkWinCondition() {
+	if(pacmanPlayer.points == gameEngine.foodCount) {
+		gameEngine.gameOver = true;
+		PlaySound(TEXT("sounds/gamewin.wav"), NULL, SND_ASYNC);
+	}
+}
 
-	gameTex[WALL].load("textures/brick.png");
-	gameTex[DOOR].load("textures/door.png");
-
-	for(int i = 0; i < MAPSIZE; i++)
-		for(int j = 0; j < MAPSIZE; j++) {
-			// drawObject(MAT2X(j), MAT2Y(i), gameEngine.gameMap[i][j]);
-			drawObject(MAT2X(j), MAT2Y(i), gameEngine.gameMap[i][j]);
+void checkPacmanDead() {
+	for(int i = 0 ; i < 4 ; i++) {
+		if(ghostPlayer[i].objectBelowPlayer == PACMAN) {
+			gameEngine.gameOver = true;
+			PlaySound(TEXT("sounds/gameover.wav"), NULL, SND_ASYNC);
 		}
+	}
 }
 
 void key(unsigned char key, int x, int y) {
 	// Check if Game Over or Beginning
 	if(gameEngine.gameOver || gameEngine.gameBeginning) return;
-	
+
 	switch (key) {
 	case 27 :
 		exit(0);
@@ -411,83 +386,6 @@ void key(unsigned char key, int x, int y) {
 
 	}
 
-	glutPostRedisplay();
-}
-
-int randNumber(int min, int max) {
-	static bool first = true;
-	if (first) {
-		srand( time(NULL) ); //seeding for the first time only!
-		first = false;
-	}
-	return min + rand() % (( max + 1 ) - min);
-}
-
-void moveGhostRandomly(int ghostID) {
-	// Check if Game Over or Beginning
-	if(gameEngine.gameOver || gameEngine.gameBeginning) return;
-
-	// Check if Ghost Exist
-	if(!ghostPlayer[ghostID].hasStarted) return;
-
-	// Variables
-	int ghostObjectId = ghostID + 5;
-	Coord lastGhostCoord = {ghostPlayer[ghostID].x, ghostPlayer[ghostID].y};
-
-	Coord nextMove[4] = {
-		{ghostPlayer[ghostID].x, ghostPlayer[ghostID].y - 1},
-		{ghostPlayer[ghostID].x - 1, ghostPlayer[ghostID].y},
-		{ghostPlayer[ghostID].x, ghostPlayer[ghostID].y + 1},
-		{ghostPlayer[ghostID].x + 1, ghostPlayer[ghostID].y}
-	}; // 0 - North | 1 - Left | 2 - South | 3 - Left
-
-	int nextObject[4] = {
-		gameEngine.gameMap[nextMove[0].y][nextMove[0].x],
-		gameEngine.gameMap[nextMove[1].y][nextMove[1].x],
-		gameEngine.gameMap[nextMove[2].y][nextMove[2].x],
-		gameEngine.gameMap[nextMove[3].y][nextMove[3].x]
-	};  // 0 - North | 1 - Left | 2 - South | 3 - Left
-
-	// Check If Is Prisoned
-	int possibleMoves = 0;
-	for(int i = 0; i < 4 ; i++) {
-		if(nextObject[i] == FLOOR || nextObject[i] == FOOD || nextObject[i] == POWER || nextObject[i] == PACMAN)
-			possibleMoves += 1;
-	}
-	if(possibleMoves == 0) {
-		cout << "Ghost " << ghostID << " is Prisoned!!" << endl;
-		return;
-	}
-
-	// If Freedom, Generate Valid Random Move
-	int randMove;
-	do {
-		randMove = randNumber(0, 3);
-
-	} while (
-		nextObject[randMove] == WALL ||
-		nextObject[randMove] == REDGHOST ||
-		nextObject[randMove] == ORANGEGHOST ||
-		nextObject[randMove] == PURPLEGHOST ||
-		nextObject[randMove] == BLUEGHOST
-	);
-
-	cout << "Ghost " << ghostObjectId << " Rand Move = " << randMove << " Next Object = " << nextObject[randMove] << endl;
-	cout << "Ghost Object Below = " << ghostPlayer[ghostID].objectBelowPlayer << " Next Object Below Ghost = " << gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] << endl;
-	cout << "Ghost Position: (" << lastGhostCoord.x << ", " << lastGhostCoord.y << ") New Ghost Position = " << nextMove[randMove].x << "-" << nextMove[randMove].y << endl;
-
-
-	// Update Next Ghost Location on Map and Ghost Coord Params
-	gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] = ghostObjectId;
-
-	gameEngine.gameMap[lastGhostCoord.y][lastGhostCoord.x] = ghostPlayer[ghostID].objectBelowPlayer;
-
-	ghostPlayer[ghostID].objectBelowPlayer = nextObject[randMove];
-	ghostPlayer[ghostID].x = nextMove[randMove].x;
-	ghostPlayer[ghostID].y = nextMove[randMove].y;
-
-
-	// Redisplay Objects In New Position
 	glutPostRedisplay();
 }
 
@@ -634,8 +532,105 @@ void movePacman(int moveCode) {
 		}
 		break;
 	}
-	
+
 	// PlaySound(TEXT("sounds/pacman-move.wav"), NULL, SND_ASYNC);
+}
+
+void clockFunction(int clock) {
+	printf("## Clock %d ##\n", clock);
+
+	// Play Beginning Music
+	if(gameEngine.gameBeginning) {
+		PlaySound(TEXT("sounds/beginning.wav"), NULL, SND_SYNC);
+		gameEngine.gameBeginning = false;
+		knockDownGameDoor();
+	}
+
+	// Move Ghost
+	int sortedGhost = randNumber(0, 3);
+	moveGhostRandomly(sortedGhost);
+
+	int clockTime = (1000.0 / GAMELEVEL);
+	glutTimerFunc(clockTime, clockFunction, clock + 1);
+}
+
+void knockDownGameDoor() {
+	int doorRow = gameEngine.doorY;
+	int doorColumn = gameEngine.doorX;
+	int doorPositionObject = gameEngine.gameMap[doorRow][doorColumn];
+	if(doorPositionObject == DOOR) {
+		gameEngine.gameMap[doorRow][doorColumn] = FLOOR;
+	} else {
+		cout << "ERROR::Não foi possível encontrar a porta do game!!" << endl;
+	}
+}
+
+void moveGhostRandomly(int ghostID) {
+	// Check if Game Over or Beginning
+	if(gameEngine.gameOver || gameEngine.gameBeginning) return;
+
+	// Check if Ghost Exist
+	if(!ghostPlayer[ghostID].hasStarted) return;
+
+	// Variables
+	int ghostObjectId = ghostID + 5;
+	Coord lastGhostCoord = {ghostPlayer[ghostID].x, ghostPlayer[ghostID].y};
+
+	Coord nextMove[4] = {
+		{ghostPlayer[ghostID].x, ghostPlayer[ghostID].y - 1},
+		{ghostPlayer[ghostID].x - 1, ghostPlayer[ghostID].y},
+		{ghostPlayer[ghostID].x, ghostPlayer[ghostID].y + 1},
+		{ghostPlayer[ghostID].x + 1, ghostPlayer[ghostID].y}
+	}; // 0 - North | 1 - Left | 2 - South | 3 - Left
+
+	int nextObject[4] = {
+		gameEngine.gameMap[nextMove[0].y][nextMove[0].x],
+		gameEngine.gameMap[nextMove[1].y][nextMove[1].x],
+		gameEngine.gameMap[nextMove[2].y][nextMove[2].x],
+		gameEngine.gameMap[nextMove[3].y][nextMove[3].x]
+	};  // 0 - North | 1 - Left | 2 - South | 3 - Left
+
+	// Check If Is Prisoned
+	int possibleMoves = 0;
+	for(int i = 0; i < 4 ; i++) {
+		if(nextObject[i] == FLOOR || nextObject[i] == FOOD || nextObject[i] == POWER || nextObject[i] == PACMAN)
+			possibleMoves += 1;
+	}
+	if(possibleMoves == 0) {
+		cout << "Ghost " << ghostID << " is Prisoned!!" << endl;
+		return;
+	}
+
+	// If Freedom, Generate Valid Random Move
+	int randMove;
+	do {
+		randMove = randNumber(0, 3);
+
+	} while (
+		nextObject[randMove] == WALL ||
+		nextObject[randMove] == REDGHOST ||
+		nextObject[randMove] == ORANGEGHOST ||
+		nextObject[randMove] == PURPLEGHOST ||
+		nextObject[randMove] == BLUEGHOST
+	);
+
+	cout << "Ghost " << ghostObjectId << " Rand Move = " << randMove << " Next Object = " << nextObject[randMove] << endl;
+	cout << "Ghost Object Below = " << ghostPlayer[ghostID].objectBelowPlayer << " Next Object Below Ghost = " << gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] << endl;
+	cout << "Ghost Position: (" << lastGhostCoord.x << ", " << lastGhostCoord.y << ") New Ghost Position = " << nextMove[randMove].x << "-" << nextMove[randMove].y << endl;
+
+
+	// Update Next Ghost Location on Map and Ghost Coord Params
+	gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] = ghostObjectId;
+
+	gameEngine.gameMap[lastGhostCoord.y][lastGhostCoord.x] = ghostPlayer[ghostID].objectBelowPlayer;
+
+	ghostPlayer[ghostID].objectBelowPlayer = nextObject[randMove];
+	ghostPlayer[ghostID].x = nextMove[randMove].x;
+	ghostPlayer[ghostID].y = nextMove[randMove].y;
+
+
+	// Redisplay Objects In New Position
+	glutPostRedisplay();
 }
 
 void showGameMap() {
@@ -647,6 +642,15 @@ void showGameMap() {
 		cout << endl;
 	}
 	cout << "###############################" << endl;
+}
+
+int randNumber(int min, int max) {
+	static bool first = true;
+	if (first) {
+		srand( time(NULL) ); //seeding for the first time only!
+		first = false;
+	}
+	return min + rand() % (( max + 1 ) - min);
 }
 
 
