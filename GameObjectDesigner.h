@@ -40,6 +40,7 @@ void desenhaCubo(Textura * textura, float tam, float cor[3]) {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	// Use Texture
 	textura->addText();
+	
 	// Apply Specular Light
 	float matSpecular[] = { 1.f, 1.f, 1.f, 1.f };
 	glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
