@@ -22,6 +22,7 @@ void draw(vector3d p1, vector3d p2, vector3d p3, vector3d p4, float cor[3]) {
 	glVertex3fv( & p4.x);
 	glEnd();
 }
+
 void desenhaCubo(Textura * textura, float tam, float cor[3]) {
 	float d = tam / 2.0;
 

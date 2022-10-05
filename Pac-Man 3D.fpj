@@ -23,6 +23,12 @@
 		<File Name="Textura.cpp"/>
 		<File Name="GameObjectDesigner.h"/>
 		<File Name="Textura.h"/>
+		<Folder Name="sounds">
+			<File Name="beginning.wav"/>
+			<File Name="pacman-move.wav"/>
+			<File Name="gameover.wav"/>
+			<File Name="gamewin.wav"/>
+		</Folder>
 	</Files>
 	<AppIcon>
 		0000010001003030000001002000A82500001600000028000000300000006000

@@ -9,11 +9,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+using namespace std;
 #include <sstream>
 #include <time.h>
-using namespace std;
+#include <windows.h>      
+#include <mmsystem.h> // Sound
 #include <conio.h>
 #include <fstream>
+
 #include "Textura.h"
 #include "GameObjectDesigner.h"
 
@@ -54,6 +57,7 @@ typedef struct {
 	string gameMapName;
 	int doorX, doorY;
 	bool gameOver;
+	bool gameBeginning;
 
 } PacmanGame;
 
@@ -61,7 +65,6 @@ typedef struct {
 	int x, y;
 	int points;
 	bool invencible;
-	bool dead;
 	int objectBelowPlayer;
 	bool hasStarted;
 } Player;
@@ -102,16 +105,16 @@ int main(int argc, char * argv[]) {
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode
 	glutCreateWindow("PacMan 3D - Pumba Developer"); // Create Window With Name
 	glClearColor(0, 0, 0, 1); // Window Background Color
-
+	
 	initCullFace();
 	initLighting();
 	initGame();
 
 	glutDisplayFunc(display);
-	glutReshapeFunc(reshape);
+	glutReshapeFunc(reshape);	
 	glutKeyboardFunc(key);
 	glutTimerFunc(100, clockFunction, 1);
-
+	
 	glutMainLoop();
 
 	return EXIT_SUCCESS;
@@ -142,29 +145,37 @@ void initLighting() {
 void initCullFace() {
 	// -- Face Culling
 	glEnable(GL_DEPTH_TEST); // Enable Z-buffer Algorithm
+	
 	glEnable(GL_CULL_FACE); // Enable Face Culling
 	glCullFace(GL_BACK); // Cull Face = Clock Wise (Back)
 }
 
 void initGame() {
 	// Reset Game Data
+	gameEngine.gameBeginning = true;
+	gameEngine.gameOver = false;
 	gameEngine.foodCount = 0;
 	pacmanPlayer.points = 0;
 	pacmanPlayer.invencible = false;
-	pacmanPlayer.dead = false;
 
 	// Set and Load Game Map
 	gameEngine.gameMapName = "pacman-map-01.txt";
 	readArchiveMap(gameEngine.gameMapName);
-	showGameMap();
+	showGameMap();		
 
-	// Open The Doors
-	knockDownGameDoor();
 }
-
 
 void clockFunction(int clock) {
 	printf("## Clock %d ##\n", clock);
+	
+	// Play Beginning Music
+	if(gameEngine.gameBeginning) {
+		PlaySound(TEXT("sounds/beginning.wav"), NULL, SND_SYNC);
+		gameEngine.gameBeginning = false;
+	} else {
+		// Open The Doors
+		knockDownGameDoor();
+	}
 
 	// Move Ghost
 	int sortedGhost = randNumber(0, 3);
@@ -297,6 +308,7 @@ void display(void) {
 void checkWinCondition() {
 	if(pacmanPlayer.points == gameEngine.foodCount) {
 		gameEngine.gameOver = true;
+		PlaySound(TEXT("sounds/gamewin.wav"), NULL, SND_ASYNC);
 	}
 }
 
@@ -304,6 +316,7 @@ void checkPacmanDead() {
 	for(int i = 0 ; i < 4 ; i++) {
 		if(ghostPlayer[i].objectBelowPlayer == PACMAN) {
 			gameEngine.gameOver = true;
+			PlaySound(TEXT("sounds/gameover.wav"), NULL, SND_ASYNC);
 		}
 	}
 }
@@ -360,7 +373,6 @@ void drawObject(float column, float row, int object) {
 	glPopMatrix();
 }
 
-
 void desenhaMapa() {
 	// Set and Load Textures
 	glEnable(GL_TEXTURE_2D);
@@ -376,8 +388,10 @@ void desenhaMapa() {
 		}
 }
 
-
 void key(unsigned char key, int x, int y) {
+	// Check if Game Over or Beginning
+	if(gameEngine.gameOver || gameEngine.gameBeginning) return;
+	
 	switch (key) {
 	case 27 :
 		exit(0);
@@ -410,8 +424,8 @@ int randNumber(int min, int max) {
 }
 
 void moveGhostRandomly(int ghostID) {
-	// Check if Game Over
-	if(gameEngine.gameOver) return;
+	// Check if Game Over or Beginning
+	if(gameEngine.gameOver || gameEngine.gameBeginning) return;
 
 	// Check if Ghost Exist
 	if(!ghostPlayer[ghostID].hasStarted) return;
@@ -478,8 +492,8 @@ void moveGhostRandomly(int ghostID) {
 }
 
 void movePacman(int moveCode) {
-	// Check if Game Over
-	if(gameEngine.gameOver) return;
+	// Check if Game Over or Beginning
+	if(gameEngine.gameOver || gameEngine.gameBeginning) return;
 
 	Coord north = {pacmanPlayer.x, pacmanPlayer.y - 1};
 	Coord left = {pacmanPlayer.x - 1, pacmanPlayer.y};
@@ -620,6 +634,8 @@ void movePacman(int moveCode) {
 		}
 		break;
 	}
+	
+	// PlaySound(TEXT("sounds/pacman-move.wav"), NULL, SND_ASYNC);
 }
 
 void showGameMap() {
