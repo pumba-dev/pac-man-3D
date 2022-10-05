@@ -23,6 +23,9 @@ using namespace std;
 #define WindowSizeX 720
 #define WindowSizeY 720
 
+// -- Game Dificulty [1..10]
+#define GAMELEVEL 9
+
 // -- Map
 #define FLOOR 0
 #define WALL 1
@@ -50,7 +53,7 @@ typedef struct {
 	int foodCount;
 	string gameMapName;
 	int doorX, doorY;
-	bool inGame;
+	bool gameOver;
 
 } PacmanGame;
 
@@ -86,6 +89,8 @@ void moveGhostRandomly(int ghostID);
 void initLighting();
 void initCullFace();
 int randNumber(int min, int max);
+void checkWinCondition();
+void checkPacmanDead();
 void knockDownGameDoor();
 void initGame();
 
@@ -101,7 +106,7 @@ int main(int argc, char * argv[]) {
 	initCullFace();
 	initLighting();
 	initGame();
-	
+
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(key);
@@ -155,9 +160,6 @@ void initGame() {
 
 	// Open The Doors
 	knockDownGameDoor();
-
-	// Init Pacman Hunting
-
 }
 
 
@@ -168,7 +170,8 @@ void clockFunction(int clock) {
 	int sortedGhost = randNumber(0, 3);
 	moveGhostRandomly(sortedGhost);
 
-	glutTimerFunc(200, clockFunction, clock + 1);
+	int clockTime = (1000.0 / GAMELEVEL);
+	glutTimerFunc(clockTime, clockFunction, clock + 1);
 }
 
 void knockDownGameDoor() {
@@ -285,9 +288,25 @@ void display(void) {
 	// -- Draw The Map And Objects
 	desenhaMapa();
 
+	checkPacmanDead();
+	checkWinCondition();
+
 	glutSwapBuffers();
 }
 
+void checkWinCondition() {
+	if(pacmanPlayer.points == gameEngine.foodCount) {
+		gameEngine.gameOver = true;
+	}
+}
+
+void checkPacmanDead() {
+	for(int i = 0 ; i < 4 ; i++) {
+		if(ghostPlayer[i].objectBelowPlayer == PACMAN) {
+			gameEngine.gameOver = true;
+		}
+	}
+}
 
 void drawObject(float column, float row, int object) {
 	glPushMatrix();
@@ -391,9 +410,12 @@ int randNumber(int min, int max) {
 }
 
 void moveGhostRandomly(int ghostID) {
-	// Verify if Ghost has on map
+	// Check if Game Over
+	if(gameEngine.gameOver) return;
+
+	// Check if Ghost Exist
 	if(!ghostPlayer[ghostID].hasStarted) return;
-	
+
 	// Variables
 	int ghostObjectId = ghostID + 5;
 	Coord lastGhostCoord = {ghostPlayer[ghostID].x, ghostPlayer[ghostID].y};
@@ -435,27 +457,30 @@ void moveGhostRandomly(int ghostID) {
 		nextObject[randMove] == PURPLEGHOST ||
 		nextObject[randMove] == BLUEGHOST
 	);
-	
+
 	cout << "Ghost " << ghostObjectId << " Rand Move = " << randMove << " Next Object = " << nextObject[randMove] << endl;
 	cout << "Ghost Object Below = " << ghostPlayer[ghostID].objectBelowPlayer << " Next Object Below Ghost = " << gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] << endl;
 	cout << "Ghost Position: (" << lastGhostCoord.x << ", " << lastGhostCoord.y << ") New Ghost Position = " << nextMove[randMove].x << "-" << nextMove[randMove].y << endl;
 
-	
+
 	// Update Next Ghost Location on Map and Ghost Coord Params
 	gameEngine.gameMap[nextMove[randMove].y][nextMove[randMove].x] = ghostObjectId;
-		
+
 	gameEngine.gameMap[lastGhostCoord.y][lastGhostCoord.x] = ghostPlayer[ghostID].objectBelowPlayer;
-	
+
 	ghostPlayer[ghostID].objectBelowPlayer = nextObject[randMove];
 	ghostPlayer[ghostID].x = nextMove[randMove].x;
 	ghostPlayer[ghostID].y = nextMove[randMove].y;
 
-	
+
 	// Redisplay Objects In New Position
 	glutPostRedisplay();
 }
 
 void movePacman(int moveCode) {
+	// Check if Game Over
+	if(gameEngine.gameOver) return;
+
 	Coord north = {pacmanPlayer.x, pacmanPlayer.y - 1};
 	Coord left = {pacmanPlayer.x - 1, pacmanPlayer.y};
 	Coord down = {pacmanPlayer.x, pacmanPlayer.y + 1};

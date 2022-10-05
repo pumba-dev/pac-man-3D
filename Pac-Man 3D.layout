@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Layout>
 	<Files>
-		<File Name="main.cpp" Top="Yes" Tabpos="1" TopLine="249">
-			<Cursor Line="274" Column="4"/>
-		</File>
-		<File Name="GameObjectDesigner.h" Top="No" Tabpos="2" TopLine="1">
-			<Cursor Line="4" Column="21"/>
-		</File>
-		<File Name="Textura.cpp" Top="No" Tabpos="3" TopLine="1">
-			<Cursor Line="1" Column="21"/>
+		<File Name="main.cpp" Top="Yes" Tabpos="1" TopLine="142">
+			<Cursor Line="190" Column="47"/>
 		</File>
 	</Files>
 	<Folders>
